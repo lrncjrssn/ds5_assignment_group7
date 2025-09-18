@@ -1,4 +1,8 @@
 ##opdracht 1
+# taken Laurence: functie maken voor records te filteren, rapporten te genereren & printen
+
+def filtered_records(records, threshold=80.0):
+    return [record for record in records if float(record['Grade']) >= threshold]    
 
 file_path = input("Enter the path to the CSV file: ")
 records = []
@@ -11,21 +15,133 @@ for row in csv_reader:
     average = total / len(records) #.mean() functie gebruiken?
     print(f"Average Grade: {average}")
     print("--------------------")
-    filtered_records = [record for record in records if float(record['Grade']) >= 80.0]
-    #filteren op cijfers >=80.0
-    print("Student Report")
-    print("--------------") 
-for record in filtered_records:
-    print(f"Name: {record['Name']}") 
-    print(f"Grade: {record['Grade']}")
-    print("--------------------")
+
+def print_filtered_records(records, threshold=80.0): 
+    """ik heb 1 functie gemaakt voor het filteren en printen van records, gemaakt door Laurence"""
+    filtered = [record for record in records if float(record['Grade']) >= threshold]
+    for record in filtered:
+        print(f"Name: {record['Name']}")
+        print(f"Grade: {record['Grade']}")
+        print("--------------------")
+    return filtered
 
 
 ##opdracht 2
-# an = a^2(n-1) + c, a(0) = 0
-# c = x + yi
-# n = diverging index
-# x range is [-1.5,0.5], y tange is [-1,1]
-#draw_mandel(width) als functie, width is in m2
+#Laurence -> functie maken om diverging index te berekenen, complexe coordinaten naar pixels te veranden, docstrings toevoegen
+import numpy as np
 
-##opdracht 3
+def coordinaten(width:float):
+    """ Gemaakt door Laurence maakt de x en y coordinaten voor alle pixels """
+    x_min = -1.5
+    x_max = 0.5
+    y_min = -1.0
+    y_max = 1.0
+
+    x_lijst = np.linspace(x_min, x_max, width)
+    y_lijst = np.linspace(y_min, y_max, width)
+
+    X, Y = np.meshgrid(x_lijst, y_lijst)
+
+    return X, Y
+
+
+
+def diverging_index(x: float, y: float): -> float
+    """" gemaakt door Laurence, berekent de diverging index """"
+    c = complex(x,y)
+    a = 0
+    i = 0
+    while abs(a) < 2:
+        a = a**2 + c
+        i = i + 1
+        if i == 100:
+            break
+    if i < 100:
+        print (f'de diverging index is {i}')
+        return i
+    if i = 100:
+        print ("de reeks divergeert niet")
+        return 0
+
+
+##opdracht 3.1
+## Laurence -> functies maken voor het genereren van een ster grafiek, nieuwe nodes toevoegen en een grafiek genereren
+
+import networkx as nx
+import matplotlib.pyplot as plt
+import random 
+
+def maak_ster(k: int):
+    """gemaakt door Laurence, maakt een ster grafiek met k + 1 punten"""
+    g = nx.Graph()
+    g.add_node(0) 
+    for i in range(1, k + 1):
+        g.add_node(i)
+        g.add_edge(0, i)
+    return g
+
+def nieuwe_node(g: nx.Graph, m: int):
+    """gemaakt door Laurence, voegt een nieuwe node toe aan de grafiek"""
+    new_node = max(g.nodes()) + 1
+    bestaande_nodes = list(g.nodes())
+    grades = [g.degree(n) for n in bestaande_nodes]
+    som_grades = sum(grades)
+    kansen = [grade / som_grades for grade in grades]
+
+    gekozen_nodes = np.random.choice(bestaande_nodes, size=m, replace=False, p=kansen)
+    gekozen_nodes = list(set(gekozen_nodes))
+
+    while len(gekozen_nodes) < m:
+        extra_node = random.choice(bestaande_nodes)
+        if extra_node not in gekozen_nodes:
+            gekozen_nodes.append(extra_node)
+
+    g.add_node(new_node)
+    for n in gekozen_nodes: 
+        g.add_edge(new_node, n)
+    return g
+
+def genereer_grafiek(k: int, n: int, m: int):
+    """gemaakt door Laurence, genereert een grafiek met n nodes en m edges per nieuwe node"""
+    g = maak_ster(m)
+
+    while len(g.nodes()) < n:
+        g = nieuwe_node(g, m)
+
+    return g
+    
+
+##opdracht 3.2
+#Laurence -> aanpassen van eerder gemaakte functies voor directed graphs 
+import networkx as nx
+import random
+
+def maak_star_graph_directed(k: int) -> nx.DiGraph:
+    """gemaakt door Laurence, maakt een directed star graph met k + 1 punten""" 
+    G = nx.DiGraph()
+    center = 0
+    for i in range(1, k+2):
+        G.add_edge(center, i) 
+    return G
+
+
+def nieuwe_node_directed(G: nx.DiGraph, M: int) -> nx.DiGraph:
+    """gemaakt door Laurence, voegt een nieuwe node toe aan de directed graph met M edges"""
+    nieuwe_node = max(G.nodes()) + 1
+    G.add_node(nieuwe_node)
+    
+    degrees = [G.in_degree(n)+1 for n in G.nodes() if n != nieuwe_node]
+    nodes = [n for n in G.nodes() if n != nieuwe_node]
+    gekozen = random.choices(nodes, weights=degrees, k=M)
+    
+    for target in gekozen:
+        G.add_edge(nieuwe_node, target) 
+    
+    return G
+
+def genereer_network_directed(k: int, N: int, M: int) -> nx.DiGraph:
+    """gemaakt door Laurence, genereert een directed graph met N nodes en M edges per nieuwe node"""
+    G = maak_star_graph_directed(k)
+    while len(G.nodes()) < N:
+        G = voeg_nieuwe_node_toe_directed(G, M)
+    return G

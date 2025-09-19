@@ -1,20 +1,39 @@
-##opdracht 1
-# taken Laurence: functie maken voor records te filteren, rapporten te genereren & printen
+## =====================
+## OPDRACHT 1
+## =====================
+# taken Felix: CSV inlezen + totaal/average berekenen
+# taken Laurence: records filteren, rapport genereren & printen
 
+import csv
+from typing import List, Dict, Tuple
+
+# ----- Felix -----
+def read_csv(file_path: str) -> List[Dict[str, str]]:
+    """
+    Functie om CSV-bestand te lezen en records op te slaan
+    in een lijst van dictionaries.
+    Gemaakt door Felix
+    """
+    records = []
+    with open(file_path, "r") as file:
+        csv_reader = csv.DictReader(file)
+        for row in csv_reader:
+            records.append(row)
+    return records
+
+def calculate_total_and_average(records: List[Dict[str, str]]) -> Tuple[float, float]:
+    """
+    Functie om het totaal en gemiddelde te berekenen van alle cijfers.
+    Gemaakt door Felix
+    """
+    grades = [float(record["Grade"]) for record in records]
+    total = sum(grades)
+    average = total / len(grades) if grades else 0.0
+    return total, average
+
+# ----- Laurence -----
 def filtered_records(records, threshold=80.0):
     return [record for record in records if float(record['Grade']) >= threshold]    
-
-file_path = input("Enter the path to the CSV file: ")
-records = []
-with open(file_path, 'r') as file:
-    csv_reader = csv.DictReader(file)
-    #wat is "r"?
-for row in csv_reader:
-    records.append(row)
-    total = sum(float(record['Grade']) for record in records)
-    average = total / len(records) #.mean() functie gebruiken?
-    print(f"Average Grade: {average}")
-    print("--------------------")
 
 def print_filtered_records(records, threshold=80.0): 
     """ik heb 1 functie gemaakt voor het filteren en printen van records, gemaakt door Laurence"""
@@ -26,11 +45,17 @@ def print_filtered_records(records, threshold=80.0):
     return filtered
 
 
-##opdracht 2
-#Laurence -> functie maken om diverging index te berekenen, complexe coordinaten naar pixels te veranden, docstrings toevoegen
-import numpy as np
+## =====================
+## OPDRACHT 2
+## =====================
+# taken Felix: plot_mandelbrot
+# taken Laurence: coordinaten + diverging index
 
-def coordinaten(width:float):
+import numpy as np
+import matplotlib.pyplot as plt
+
+# ----- Laurence -----
+def coordinaten(width: float):
     """ Gemaakt door Laurence maakt de x en y coordinaten voor alle pixels """
     x_min = -1.5
     x_max = 0.5
@@ -41,35 +66,41 @@ def coordinaten(width:float):
     y_lijst = np.linspace(y_min, y_max, width)
 
     X, Y = np.meshgrid(x_lijst, y_lijst)
-
     return X, Y
 
-
-
-def diverging_index(x: float, y: float): -> float
-    """" gemaakt door Laurence, berekent de diverging index """"
-    c = complex(x,y)
+def diverging_index(x: float, y: float) -> int:
+    """gemaakt door Laurence, berekent de diverging index"""
+    c = complex(x, y)
     a = 0
     i = 0
-    while abs(a) < 2:
+    while abs(a) < 2 and i < 100:
         a = a**2 + c
-        i = i + 1
-        if i == 100:
-            break
-    if i < 100:
-        print (f'de diverging index is {i}')
-        return i
-    if i = 100:
-        print ("de reeks divergeert niet")
-        return 0
+        i += 1
+    return i if i < 100 else 0
+
+# ----- Felix -----
+def plot_mandelbrot(divergence_array: np.ndarray) -> None:
+    """
+    Maakt een visualisatie van de Mandelbrot set met kleuren 
+    gebaseerd op de diverging index en toont de plot.
+    Gemaakt door Felix
+    """
+    plt.figure(figsize=(6,6))
+    plt.imshow(divergence_array, cmap="plasma", extent=[-1.5, 0.5, -1, 1])
+    plt.colorbar(label="Diverging index")
+    plt.title("Mandelbrot Set")
+    plt.xlabel("Re(z)")
+    plt.ylabel("Im(z)")
+    plt.show()
 
 
-##opdracht 3.1
-## Laurence -> functies maken voor het genereren van een ster grafiek, nieuwe nodes toevoegen en een grafiek genereren
+## =====================
+## OPDRACHT 3.1
+## =====================
+# Laurence -> functies maken voor het genereren van een ster grafiek, nieuwe nodes toevoegen en een grafiek genereren
 
 import networkx as nx
-import matplotlib.pyplot as plt
-import random 
+import random
 
 def maak_ster(k: int):
     """gemaakt door Laurence, maakt een ster grafiek met k + 1 punten"""
@@ -111,10 +142,10 @@ def genereer_grafiek(k: int, n: int, m: int):
     return g
     
 
-##opdracht 3.2
-#Laurence -> aanpassen van eerder gemaakte functies voor directed graphs 
-import networkx as nx
-import random
+## =====================
+## OPDRACHT 3.2
+## =====================
+# Laurence -> aanpassen van eerder gemaakte functies voor directed graphs 
 
 def maak_star_graph_directed(k: int) -> nx.DiGraph:
     """gemaakt door Laurence, maakt een directed star graph met k + 1 punten""" 
@@ -123,7 +154,6 @@ def maak_star_graph_directed(k: int) -> nx.DiGraph:
     for i in range(1, k+2):
         G.add_edge(center, i) 
     return G
-
 
 def nieuwe_node_directed(G: nx.DiGraph, M: int) -> nx.DiGraph:
     """gemaakt door Laurence, voegt een nieuwe node toe aan de directed graph met M edges"""
@@ -143,5 +173,47 @@ def genereer_network_directed(k: int, N: int, M: int) -> nx.DiGraph:
     """gemaakt door Laurence, genereert een directed graph met N nodes en M edges per nieuwe node"""
     G = maak_star_graph_directed(k)
     while len(G.nodes()) < N:
-        G = voeg_nieuwe_node_toe_directed(G, M)
+        G = nieuwe_node_directed(G, M)
     return G
+
+
+## =====================
+## TEST / AANROEPEN
+## =====================
+if __name__ == "__main__":
+    # Opdracht 1 testen
+    dummy_csv = "grades.csv"
+    with open(dummy_csv, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=["Name","Grade"])
+        writer.writeheader()
+        writer.writerow({"Name":"Alice","Grade":"95"})
+        writer.writerow({"Name":"Bob","Grade":"78"})
+        writer.writerow({"Name":"Charlie","Grade":"88"})
+
+    print("=== OPDRACHT 1 ===")
+    records = read_csv(dummy_csv)
+    totaal, gemiddeld = calculate_total_and_average(records)
+    print(f"Totaal: {totaal}, Gemiddelde: {gemiddeld}")
+    print_filtered_records(records)
+
+    # Opdracht 2 testen
+    print("\n=== OPDRACHT 2 ===")
+    breedte = 200
+    X, Y = coordinaten(breedte)
+    mandel_array = np.zeros((breedte, breedte))
+    for i in range(breedte):
+        for j in range(breedte):
+            mandel_array[i,j] = diverging_index(X[i,j], Y[i,j])
+    plot_mandelbrot(mandel_array)
+
+    # Opdracht 3.1 testen
+    print("\n=== OPDRACHT 3.1 ===")
+    g = genereer_grafiek(k=3, n=10, m=2)
+    print("Nodes:", g.nodes())
+    print("Edges:", g.edges())
+
+    # Opdracht 3.2 testen
+    print("\n=== OPDRACHT 3.2 ===")
+    G_dir = genereer_network_directed(k=2, N=10, M=2)
+    print("Directed Nodes:", G_dir.nodes())
+    print("Directed Edges:", G_dir.edges())

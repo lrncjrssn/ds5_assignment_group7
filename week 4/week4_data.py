@@ -31,9 +31,7 @@ def explore_data(df: pd.DataFrame) -> None:
     Author: Laurence
     """
     print(df.head())
-
     print(df.info())
-
     print("missende waardes per kolom:")
     print(df.isnull().sum())
 
@@ -73,16 +71,51 @@ def delete_missing_values(df: pd.DataFrame) -> pd.DataFrame:
     print(f" er zijn {before - after} rijen verwijderd die missende waardes bevatten.")
     return df
 
+def fill_missing_values(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Fill missing values in the DataFrame with simple default values 
+    depending on the data type.
+
+    Args:
+        df (pd.DataFrame): Dataset with possible missing values.
+
+    Returns:
+        pd.DataFrame: Dataset with filled values.
+
+    Author: Felix
+    """
+    for col in df.columns:
+        if df[col].dtype == "O":
+            df[col] = df[col].fillna("onbekend")
+        else:
+            df[col] = df[col].fillna(0)
+    return df
+
+def clean_text_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Clean text columns by stripping spaces and fixing inconsistent casing.
+
+    Args:
+        df (pd.DataFrame): Dataset to clean.
+
+    Returns:
+        pd.DataFrame: Dataset with formatted text columns.
+
+    Author: Felix
+    """
+    for c in df.select_dtypes(include=["object"]).columns:
+        df[c] = df[c].apply(lambda x: x.strip().capitalize() if isinstance(x, str) else x)
+    return df
+
 def load_and_clean_missing_values(filepath: str) -> pd.DataFrame:
     """
-    Main function to load and clean the hotel bookings data (Felix's part).
+    Main function to load and clean the hotel bookings data.
     
     Steps:
     1. Load the Excel file.
-    2. Explore the dataset.
-    3. Remove duplicates.
-    4. Fill missing values.
-    5. Clean text columns.
+    2. Remove duplicates.
+    3. Fill missing values.
+    4. Clean text columns.
 
     Args:
         filepath (str): Path to the Excel file.
@@ -100,10 +133,9 @@ def load_and_clean_missing_values(filepath: str) -> pd.DataFrame:
 
 ## opdracht 2
 
-
 def load_retail_data(filepath: str) -> pd.DataFrame:
     """
-    Load the detailedRetail.xlsx file into a pandas DataFrame.
+    Load the detailedRetail Excel file into a pandas DataFrame.
 
     Args:
         filepath (str): Path to the Excel file.
@@ -151,21 +183,43 @@ def calculate_sales_by_month(df: pd.DataFrame) -> pd.DataFrame:
     month_sales["Percentage"] = round((month_sales["Sales"] / total_sales) * 100, 2)
     return month_sales
 
+def calculate_sales_by_manager(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calculate total sales and percentage per sales manager manually.
+
+    Args:
+        df (pd.DataFrame): Retail dataset containing 'SalesManager' and 'Sales' columns.
+
+    Returns:
+        pd.DataFrame: DataFrame with total and percentage of sales per manager.
+
+    Author: Felix
+    """
+    if "SalesManager" not in df.columns:
+        print("Kolom 'SalesManager' ontbreekt!")
+        return pd.DataFrame()
+    managers = {}
+    for _, row in df.iterrows():
+        name = row["SalesManager"]
+        sale = row["Sales"]
+        if name not in managers:
+            managers[name] = 0
+        managers[name] += sale
+    total = sum(managers.values())
+    result = [{"SalesManager": name, "Sales": sales, "Percentage": round((sales/total)*100,2) if total else 0}
+              for name, sales in managers.items()]
+    return pd.DataFrame(result)
+
 def generate_basic_retail_report(filepath: str) -> dict[str, pd.DataFrame]:
     """
-    Main function (Laurence's part) to load and analyze the retail sales data.
-    It calculates totals and percentages per category and month.
-
-    Steps:
-    1. Load the Excel file.
-    2. Calculate total and percentage of sales per category.
-    3. Calculate total and percentage of sales per month.
+    Main function to load and analyze the retail sales data.
+    Calculates totals and percentages per category and month.
 
     Args:
         filepath (str): Path to 'detailedRetail.xlsx'.
 
     Returns:
-        dict[str, pd.DataFrame]: Dictionary containing the two summary DataFrames.
+        dict[str, pd.DataFrame]: Dictionary containing category and month reports.
 
     Author: Laurence
     """
@@ -177,185 +231,138 @@ def generate_basic_retail_report(filepath: str) -> dict[str, pd.DataFrame]:
         "month_report": month_report
     }
 
+def save_retail_manager_report(filepath: str) -> pd.DataFrame:
+    """
+    Generate and save sales report per manager.
+
+    Args:
+        filepath (str): Path to the Excel file.
+
+    Returns:
+        pd.DataFrame: Report with manager sales and percentages.
+
+    Author: Felix
+    """
+    df = load_retail_data(filepath)
+    report = calculate_sales_by_manager(df)
+    report.to_excel("reportRetail_managers.xlsx", index=False)
+    print("Rapport opgeslagen als reportRetail_managers.xlsx")
+    return report
+
 ## opdracht 3
 
-from langdetect import detect, DetectorFactory, LangDetectException
-
-DetectorFactory.seed = 0
-
-def detect_language(tweet: str) -> str:
+def detect_language_simple(tweet: str) -> str:
     """
-    Detect the language of a single tweet using the langdetect package.
-    
-    Parameters
-    ----------
-    tweet : str
-        The tweet text to analyze.
-    
-    Returns
-    -------
-    str
-        The detected language code (e.g., 'en', 'fr', 'es').
-        Returns 'Unknown' if detection fails or the tweet is empty.
-    
-    Notes
-    -----
-    Written by Laurence
+    Detect the language of a tweet using simple keyword matching.
+
+    Args:
+        tweet (str): Tweet text.
+
+    Returns:
+        str: Language code ('en', 'nl', or 'unknown').
+
+    Author: Laurence
     """
-    try:
-        if not isinstance(tweet, str) or tweet.strip() == "":
-            return "Unknown"
-        return detect(tweet)
-    except LangDetectException:
-        return "Unknown"
-    except Exception:
-        return "Unknown"
+    if not isinstance(tweet, str) or tweet.strip() == "":
+        return "unknown"
+    text = tweet.lower()
+    if any(word in text for word in ["the", "and", "is"]):
+        return "en"
+    elif any(word in text for word in ["de", "het", "een"]):
+        return "nl"
+    else:
+        return "unknown"
 
 def add_language_column(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Adds a new column 'language' to the DataFrame by detecting the language of each tweet.
-    
-    Parameters
-    ----------
-    df : pd.DataFrame
-        DataFrame containing at least a column named 'Tweet'.
-    
-    Returns
-    -------
-    pd.DataFrame
-        The same DataFrame with an additional column 'language'.
-    
-    Notes
-    -----
-    Written by Laurence
+    Add a 'language' column to the DataFrame by detecting language of each tweet.
+
+    Args:
+        df (pd.DataFrame): DataFrame with a 'Tweet' column.
+
+    Returns:
+        pd.DataFrame: DataFrame with an added 'language' column.
+
+    Author: Laurence
     """
     if "Tweet" not in df.columns:
         raise ValueError("The DataFrame must contain a column named 'Tweet'.")
-    
-    df["language"] = df["Tweet"].apply(detect_language)
+    df["language"] = df["Tweet"].apply(detect_language_simple)
     return df
 
 def main_language_detection(input_path: str) -> pd.DataFrame:
     """
-    Main function for Exercise 3.1: Language detection.
-    Loads the Excel file with tweets, detects their language, and saves the result.
-    
-    Parameters
-    ----------
-    input_path : str
-        Path to the Excel file containing tweets.
-    
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with detected language for each tweet.
-    
-    Notes
-    -----
-    Written by Laurence
+    Detect language of tweets from an Excel file and save result.
+
+    Args:
+        input_path (str): Path to the Excel file.
+
+    Returns:
+        pd.DataFrame: DataFrame with detected language column.
+
+    Author: Laurence
     """
     df = pd.read_excel(input_path)
     df = add_language_column(df)
-    
-    # Sla het resultaat op als Excel-bestand
     df.to_excel("tweets_language_detected.xlsx", index=False)
-    
     return df
 
-if __name__ == "__main__":
-    df_result = main_language_detection("tweets-1.xlsx")
-    print(df_result.head())
-
-
-##opdracht 3.2
-
-# exercise3_2_sentiment_detection_felix.py
-from textblob import TextBlob
-
-def analyze_sentiment_english(tweet: str) -> str:
+def analyze_sentiment_simple(tweet: str) -> str:
     """
-    Analyze the sentiment of an English tweet using the TextBlob library.
-    
-    Parameters
-    ----------
-    tweet : str
-        The tweet text to analyze.
-    
-    Returns
-    -------
-    str
-        'positive' if the polarity > 0,
-        'negative' if the polarity < 0,
-        'neutral' otherwise.
-    
-    Notes
-    -----
-    Written by Laurence
+    Simple sentiment analysis using keyword matching.
+
+    Args:
+        tweet (str): Tweet text.
+
+    Returns:
+        str: 'positive', 'negative', or 'neutral'.
+
+    Author: Felix
     """
-    try:
-        if not isinstance(tweet, str) or tweet.strip() == "":
-            return "neutral"
-        polarity = TextBlob(tweet).sentiment.polarity
-        if polarity > 0:
-            return "positive"
-        elif polarity < 0:
-            return "negative"
-        else:
-            return "neutral"
-    except Exception:
+    if not isinstance(tweet, str) or tweet.strip() == "":
+        return "neutral"
+    positive_words = ["good", "happy", "love", "great", "goed", "leuk"]
+    negative_words = ["bad", "sad", "hate", "terrible", "slecht", "vreselijk"]
+    text = tweet.lower()
+    if any(word in text for word in positive_words):
+        return "positive"
+    elif any(word in text for word in negative_words):
+        return "negative"
+    else:
         return "neutral"
 
-def add_sentiment_column_english(df: pd.DataFrame) -> pd.DataFrame:
+def add_sentiment_column(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Adds a 'sentiment' column to the DataFrame for English tweets only.
-    Non-English tweets are labeled as 'Not analyzed'.
-    
-    Parameters
-    ----------
-    df : pd.DataFrame
-        DataFrame containing columns 'Tweet' and 'language'.
-    
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with an additional 'sentiment' column.
-    
-    Notes
-    -----
-    Written by Laurence
+    Add a 'sentiment' column to the DataFrame based on tweet text.
+
+    Args:
+        df (pd.DataFrame): DataFrame with 'Tweet' column.
+
+    Returns:
+        pd.DataFrame: DataFrame with added 'sentiment' column.
+
+    Author: Felix
     """
-    if "Tweet" not in df.columns or "language" not in df.columns:
-        raise ValueError("DataFrame must contain 'Tweet' and 'language' columns.")
-    
-    df["sentiment"] = df.apply(
-        lambda row: analyze_sentiment_english(row["Tweet"]) if row["language"] == "en" else "Not analyzed",
-        axis=1,
-    )
+    if "Tweet" not in df.columns:
+        raise ValueError("DataFrame must contain 'Tweet' column.")
+    df["sentiment"] = df["Tweet"].apply(analyze_sentiment_simple)
     return df
 
-def main_sentiment_detection_english(input_path: str) -> pd.DataFrame:
+def main_sentiment_detection(input_path: str) -> pd.DataFrame:
     """
-    Main function for Exercise 3.2 (Felix part):
-    Performs sentiment detection on English tweets using TextBlob.
-    
-    Parameters
-    ----------
-    input_path : str
-        Path to the Excel file containing tweets with a 'language' column.
-    
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with an additional 'sentiment' column.
-    
-    Notes
-    -----
-    Written by Laurence
+    Perform language detection and sentiment analysis on tweets from Excel.
+
+    Args:
+        input_path (str): Path to Excel file with tweets.
+
+    Returns:
+        pd.DataFrame: DataFrame with 'language' and 'sentiment' columns.
+
+    Author: Felix
     """
     df = pd.read_excel(input_path)
-    df = add_sentiment_column_english(df)
-    df.to_excel("tweets_sentiment_english.xlsx", index=False)
+    df = add_language_column(df)
+    df = add_sentiment_column(df)
+    df.to_excel("tweets_sentiment_detected.xlsx", index=False)
+    print("Bestand opgeslagen als tweets_sentiment_detected.xlsx")
     return df
-
-if __name__ == "__main__":
-    d
